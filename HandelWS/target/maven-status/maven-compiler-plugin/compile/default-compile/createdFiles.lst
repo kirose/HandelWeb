@@ -1,0 +1,12 @@
+mx\handel\ws\entity\WSUsuarioEstatus.class
+mx\handel\ws\entity\WSPerfil.class
+mx\handel\ws\ctrl\WSServicioCtrl.class
+mx\handel\ws\entity\WSServicio.class
+mx\handel\ws\entity\WSUsuario.class
+mx\handel\ws\entity\WSServicioTipo.class
+mx\handel\ws\entity\WSPermisoPK.class
+mx\handel\ws\entity\WSUsuarioTipo.class
+mx\handel\ws\WSValidator.class
+mx\handel\ws\dao\WSServicioDAO.class
+mx\handel\ws\dao\WSUsuarioDAO.class
+mx\handel\ws\entity\WSPermiso.class

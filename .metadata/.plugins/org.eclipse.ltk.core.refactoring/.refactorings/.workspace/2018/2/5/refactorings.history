@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;HandelArq&apos; to &apos;HandelCfg&apos;" description="Rename resource &apos;HandelArq&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/HandelArq" name="HandelCfg" stamp="1517445544353" updateReferences="true"/>
+</session>

@@ -1,0 +1,84 @@
+package mx.handel.cfg.ws.ctrl;
+
+
+import javax.ws.rs.FormParam;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.lang3.StringUtils;
+
+import mx.handel.cfg.ws.ctrl.WSAbstractCtrl;
+import mx.handel.cfg.ws.json.Json;
+import mx.handel.cfg.Authenticator;
+import mx.handel.cfg.ws.pojo.WSResponse;
+
+/**
+ * 
+ * @author Marco Antonio Salazar
+ *
+ */
+@Path("/Authentication")
+public class WSAuthentication extends WSAbstractCtrl {
+	
+	//	https://stackoverflow.com/questions/26777083/best-practice-for-rest-token-based-authentication-with-jax-rs-and-jersey
+	//	http://www.developerscrappad.com/1814/java/java-ee/rest-jax-rs/java-ee-7-jax-rs-2-0-simple-rest-api-authentication-authorization-with-custom-http-header/
+	//	https://javapapers.com/web-service/restful-services-http-basic-authentication/
+	
+	
+    @POST
+    @Path("/login")
+    @Produces(MediaType.APPLICATION_JSON)
+    //@Consumes(MediaType.APPLICATION_JSON)
+    public Response login(
+        @FormParam( "username" ) String username,
+        @FormParam( "password" ) String password ){
+        
+        try {
+        	String serviceKey = getServletRequest().getHeader("service_key");
+        	if (StringUtils.isBlank(serviceKey)){
+        		getLogger().info("Tratando de autentificarse ("+username+","+password+") sin service_key");
+        		return getNoCacheResponseBuilder(Response.Status.BAD_REQUEST).build();
+        	}
+            Authenticator authenticator = Authenticator.getInstance(wsUsuarioDAO, cfgParametroDAO);
+        	//String string = IOUtils.toString(getServletRequest().getInputStream());
+            String token = authenticator.login( serviceKey, username, password );
+ 
+            return getNoCacheResponseBuilder(Response.Status.OK)
+            		.entity(new Json()
+        				.add("message", "Autentificado")
+        				.add("status", WSResponse.OK)
+        				.add("token", token)
+        				.toString()
+            		).build();
+ 
+        } catch (final Exception ex) {
+        	getLogger().error("Error de Autentificacion", ex);
+            return getNoCacheResponseBuilder(Response.Status.UNAUTHORIZED)
+            		.entity(new Json()
+            				.add("message", "Error de Autentificacion")
+            				.add("status", WSResponse.ERROR_INTERNAL)
+            				.toString()
+            		).build();
+        }
+    }
+    @POST
+    @Path("/logout")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response logout(){
+        try {
+            Authenticator authenticator = Authenticator.getInstance(wsUsuarioDAO, cfgParametroDAO);
+            authenticator.logout(
+            	getServletRequest().getHeader("token")
+            );
+ 
+            return getNoCacheResponseBuilder(Response.Status.NO_CONTENT).build();
+        } catch (final Exception ex) {
+        	getLogger().error("Error al cerrar sesion", ex);
+            return getNoCacheResponseBuilder(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+}

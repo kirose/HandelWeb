@@ -1,0 +1,5 @@
+package mx.handel.cfg.ws.json;
+
+public class Json {
+
+}

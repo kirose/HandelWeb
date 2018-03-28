@@ -1,0 +1,87 @@
+package mx.handel.ws.ctrl;
+
+
+import javax.ejb.EJB;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.io.IOUtils;
+
+import mx.handel.cfg.task.TaskManager;
+import mx.handel.cfg.ws.ctrl.WSAbstractCtrl;
+import mx.handel.cfg.ws.pojo.WSResponse;
+import mx.handel.ws.WSValidator;
+import mx.handel.ws.dao.WSServicioDAO;
+import mx.handel.ws.entity.WSServicio;
+import mx.handel.ws.entity.WSUsuario;
+/**
+ * El controlador principal de los Web-Services RESTFUL
+ * @author Marco Antonio Salazar
+ * @since 2018-01-01
+ */
+@Path("/rs")
+public class WSServicioCtrl extends WSAbstractCtrl{
+	
+	@EJB private TaskManager taskManager;
+	@EJB private WSServicioDAO servicioDAO;
+
+	/**
+	 * Este metodo administra las solicitudes de WebServices
+	 * Todos los servicios expuestos son administrados por este metodo
+	 * @param service	El nombre delservicio que se solicita
+	 * @return	respuesta-json
+	 */
+    @POST
+    @Path("/{param}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+	public Response manage(@PathParam("param") String service) {
+    	try{
+    		// ********* Obtenemos los parametros-json que se enviaron (notar que se decodifica como UTF8) ********
+    		String jsonParams = IOUtils.toString(getServletRequest().getInputStream(),"UTF-8");
+
+    		// ********* Consultamos WSServicio que solicita *************** 
+	    	WSServicio servicio = WSValidator.getInstance(servicioDAO,cfgParametroDAO).getServicio(service);
+
+    		// ********* Validamos que exista el servicio que se solicita *************
+	    	if (servicio == null){
+	    		return getNoCacheResponseBuilder(Response.Status.NOT_FOUND).build();
+	    	}
+	    	// *********** El WS-Usuario autenticado e identificado por token *********  
+	    	WSUsuario user = getAuthenticatedWSUsuario();
+	    	
+	    	// ************** INVOCAMOS EL SERVICIO SOLICITADO ******************
+	    	WSResponse r = servicioDAO.invoke(user.getIdUsuario(), servicio.getIdServicio(), jsonParams);
+	    	// ******************************************************************
+
+	    	// 	EN EL LOG SOLO ESCRIIMOS SI HAY UN ERROR INTERNO(INESPERADO)
+	    	//	O SI ES ERROR CONTROLADO Y DEBUG_ENABLE ESTA HABILITADO
+	    	if (WSResponse.ERROR_INTERNAL.equals(r.getStatus()) || (r.getStatus().startsWith("E") && isDebugEnabled())) {
+	    		getLogger().error(
+    				String.format(
+    					"\nCODE LOG: %s\nERROR AL INVOCAR SERVICIO %s-%s\n\n%s",
+    					r.makeUniqueCodeLog(),
+    					servicio.getIdServicio(),
+    					servicio.getServicio(),
+    					r.getMessageLog()
+    				)
+    			);
+	    	}
+	    	// ******** Si se requiere equecutar algunatrea en java (Email, Report, ...) ***********
+	    	if (r.getJavaTasks() != null){
+	    		taskManager.manage(r.getJavaTasks());	    		
+	    	}
+	    	// ******** Devolvemos response-json **********
+			return Response.status(Response.Status.OK).entity(r.toString()).build();
+    	} catch(Exception e){
+    		// Nunca deberia de entrar aqui, si alguna modificacion lo provoca lo cachamos
+        	getLogger().error("Error al invocar servicio "+service, e);
+            return getNoCacheResponseBuilder(Response.Status.INTERNAL_SERVER_ERROR).build();
+    	}
+	}
+}
